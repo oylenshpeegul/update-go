@@ -1,0 +1,38 @@
+#!/bin/bash
+
+if [ "$#" -ne 1 ]; then
+    echo "usage: $0 <version>"
+	exit
+fi
+NEW="$1"
+echo "Updating Go to version $NEW"
+
+CURRENT=`go version | cut -s -d' ' -f3 | sed 's/^go//'`
+echo "Current version is $CURRENT"
+
+if [ "$NEW" == "$CURRENT" ]; then
+    echo "Go is already up to date!"
+	exit
+fi
+
+PLATFORM=`go version | cut -s -d' ' -f4 | sed 's/\//-/'`
+echo "Platform is $PLATFORM"
+
+TARBALL="go$NEW.$PLATFORM.tar.gz"
+echo "Working with tarball $TARBALL"
+
+curl --output "$TARBALL" "https://storage.googleapis.com/golang/$TARBALL"
+
+SHA1SUM=`lynx --dump https://golang.org/dl/ | grep -A 1 $TARBALL | grep SHA1 | cut -s -d: -f2 | tr -d '[[:space:]]'`
+echo "SHA1 of downloaded file should be $SHA1SUM"
+
+SHA1CHECK=`echo "$SHA1SUM $TARBALL" | sha1sum -c -`
+if [ "$SHA1CHECK" != "$TARBALL: OK" ]; then
+    echo "Checksum doesn't match! Bad download?"
+	exit
+fi
+
+echo "Installing $TARBALL to /usr/local/go"
+sudo mv /usr/local/go "/usr/local/go$CURRENT"
+sudo tar -C /usr/local -xf "$TARBALL"
+
